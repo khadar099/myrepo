@@ -1,0 +1,22 @@
+module.exports = {
+  projects: [
+    '<rootDir>/libs/shared/ui-library',
+    '<rootDir>/libs/shared/feature-library',
+    '<rootDir>/libs/shared/util-library',
+    '<rootDir>/libs/domains/marketing',
+    '<rootDir>/apps/servers/directus-connector',
+    '<rootDir>/apps/servers/hybris-connector',
+    '<rootDir>/apps/storybook-app',
+    '<rootDir>/apps/website',
+    '<rootDir>/apps/shell-server',
+    '<rootDir>/apps/servers/mulesoft-connector',
+    '<rootDir>/apps/servers/agora-connector',
+    '<rootDir>/apps/clients/ubc-shell-client',
+    '<rootDir>/apps/clients/ubc-business',
+    '<rootDir>/apps/clients/ubc-customer',
+    '<rootDir>/libs/shared/logger-library',
+    '<rootDir>/libs/domains/static-pages',
+    '<rootDir>/libs/domains/click-to-call',
+    '<rootDir>/libs/domains/product-catalogue',
+  ],
+};

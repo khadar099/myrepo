@@ -1,0 +1,61 @@
+{
+  "npmScope": "lla",
+  "affected": { "defaultBase": "origin/develop" },
+  "implicitDependencies": {
+    "angular.json": "*",
+    "package.json": { "dependencies": "*", "devDependencies": "*" },
+    "tsconfig.base.json": "*",
+    "tslint.json": "*",
+    ".eslintrc.json": "*",
+    "nx.json": "*"
+  },
+  "tasksRunnerOptions": {
+    "default": {
+      "runner": "@nrwl/nx-cloud",
+      "options": {
+        "accessToken": "N2IzZTBmM2YtOGU2Ny00ODA0LTliNjQtZDRjMGZmNzM3MjRjfHJlYWQtd3JpdGU=",
+        "cacheableOperations": ["build", "test", "lint", "e2e"],
+        "canTrackAnalytics": false,
+        "showUsageWarnings": true
+      }
+    }
+  },
+  "projects": {
+    "ui-library": { "tags": ["library"] },
+    "feature-library": { "tags": ["library"] },
+    "util-library": { "tags": ["library"] },
+    "domains-marketing": { "tags": ["library"] },
+    "storybook-app": { "tags": ["application"] },
+    "storybook-app-e2e": {
+      "tags": [],
+      "implicitDependencies": ["storybook-app"]
+    },
+    "website": { "tags": [] },
+    "website-e2e": { "tags": [], "implicitDependencies": ["website"] },
+    "shell-server": { "tags": [] },
+    "servers-mulesoft-connector": { "tags": [] },
+    "servers-directus-connector": { "tags": [] },
+    "servers-hybris-connector": { "tags": ["server", "application"] },
+    "servers-agora-connector": { "tags": [] },
+    "clients-ubc-shell-client": { "tags": [] },
+    "clients-ubc-shell-client-e2e": {
+      "tags": [],
+      "implicitDependencies": ["clients-ubc-shell-client"]
+    },
+    "clients-ubc-business": { "tags": [] },
+    "clients-ubc-business-e2e": {
+      "tags": [],
+      "implicitDependencies": ["clients-ubc-business"]
+    },
+    "clients-ubc-customer": { "tags": [] },
+    "clients-ubc-customer-e2e": {
+      "tags": [],
+      "implicitDependencies": ["clients-ubc-customer"]
+    },
+    "clients-ubc-shell-server": { "tags": [] },
+    "shared-logger-library": { "tags": [] },
+    "domains-static-pages": { "tags": [] },
+    "domains-click-to-call": { "tags": [] },
+    "domains-product-catalogue": { "tags": [] }
+  }
+}

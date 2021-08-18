@@ -1,0 +1,45 @@
+{
+  "compileOnSave": false,
+  "types": ["cypress"],
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "esnext",
+    "typeRoots": ["node_modules/@types"],
+    "lib": ["es2017", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@lla/shared/ui-library": ["libs/shared/ui-library/src/index.ts"],
+      "@lla/shared/feature-library": [
+        "libs/shared/feature-library/src/index.ts"
+      ],
+      "@lla/shared/util-library": ["libs/shared/util-library/src/index.ts"],
+      "@lla/domains/marketing": ["libs/domains/marketing/src/index.ts"],
+      "@lla/apps/ecommerce-web": [
+        "apps/ecommerce-web-app/src/app/app.module.ts"
+      ],
+      "@lla/apps/website": ["apps/website/src/app/app.module.ts"],
+      "@lla/apps/clients/ubc-business": [
+        "apps/clients/ubc-business/src/app/app.module.ts"
+      ],
+      "@lla/apps/clients/ubc-customer": [
+        "apps/clients/ubc-customer/src/app/app.module.ts"
+      ],
+      "@lla/shared/logger-library": ["libs/shared/logger-library/src/index.ts"],
+      "@lla/domains/static-pages": ["libs/domains/static-pages/src/index.ts"],
+      "@lla/domains/click-to-call": ["libs/domains/click-to-call/src/index.ts"],
+      "@lla/domains/product-catalogue": [
+        "libs/domains/product-catalogue/src/index.ts"
+      ]
+    }
+  },
+  "exclude": ["node_modules", "tmp", "**/**/test-setup.ts"]
+}
