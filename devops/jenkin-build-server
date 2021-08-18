@@ -1,0 +1,163 @@
+pipeline{
+    agent {label 'master'}
+    tools {nodejs "nodejs"}
+environment {
+        CHROME_BIN = "/bin/google-chrome"
+        SERVER_PREFIX = "fl-server-app"
+        MULE_SERVER_PREFIX = "fl-mule-connector-app"
+        DIRECTUS_SERVER_PREFIX = "fl-directus-connector-app"
+
+        BRANCH = "${env.BRANCH_NAME}"
+        SERVER = BRANCH.replaceAll('/', '-').toLowerCase()
+        MULE_SERVER = BRANCH.replaceAll('/', '-').toLowerCase()
+        DIRECUTS_SERVER = BRANCH.replaceAll('/', '-').toLowerCase()
+        VERSION = "${env.VERSION == 'latest' ? "${BUILD_NUMBER}" : "${env.VERSION}"}"
+        YARN_REPO_NAME = "vtr-yarn-package"
+        MULE_SERVER_REPO_NAME = "mule-connector-app-non-prod"
+        SERVER_APP_REPO_NAME = "hybris-connector-app-non-prod"
+        DIRECTUS_APP_REPO_NAME = "directus-connector-app-non-prod"
+        MULE_SERVER_REPO_PROD = "mule-connector-app-prod"
+        SERVER_APP_REPO_PROD = "hybris-connector-app-prod"
+        DIRECTUS_APP_REPO_PROD = "directus-connector-app-prod"
+        ECR = "712965751785.dkr.ecr.us-east-1.amazonaws.com"
+        ECR_PROD = "441688260374.dkr.ecr.us-east-1.amazonaws.com"
+        ECR_REGION = "us-east-1"
+    }
+options {
+      timeout(time: 20, unit: "MINUTES") 
+      buildDiscarder logRotator(artifactDaysToKeepStr: "", artifactNumToKeepStr: "", daysToKeepStr: "2", numToKeepStr: "2")
+  }    
+stages
+{
+stage("Stop Old Build")
+{
+    steps {
+        milestone label: "", ordinal:  Integer.parseInt(env.BUILD_ID) - 1
+        milestone label: "", ordinal:  Integer.parseInt(env.BUILD_ID)
+    }
+}
+stage("Docker_login")
+{
+    steps {
+        script {
+                 if (env.BRANCH_NAME.startsWith('release') || env.BRANCH_NAME.startsWith('hotfix'))
+                 {
+            sh "aws ecr get-login-password --region ${ECR_REGION} | docker login --username AWS --password-stdin ${ECR_PROD}"
+                 }
+                else {
+            sh "aws ecr get-login-password --region ${ECR_REGION} | docker login --username AWS --password-stdin ${ECR}"
+                }     
+    }
+}
+}
+stage("yarn:pull")
+{
+    steps {
+        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+            sh "docker pull ${ECR}/${YARN_REPO_NAME}:yarn-latest"
+        }
+    }
+} 
+stage("image: yarn install")
+{
+    steps {
+        sh "docker build -t yarn:latest -f devops/docker-yarn ."
+        sh "docker tag yarn:latest ${ECR}/${YARN_REPO_NAME}:yarn-latest"
+    }
+}
+stage("yarn package:push")
+{
+    steps {
+        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+            sh "docker push ${ECR}/${YARN_REPO_NAME}:yarn-latest"
+        }
+    }
+} 
+stage("image: hybris-connector app")
+{
+    steps {
+        sh "docker build -t ${SERVER_PREFIX}-${SERVER}:${VERSION} -f devops/docker-hybris-connector ."
+    }
+}
+stage("image: mule-connector app")
+{
+    steps {
+        sh "docker build -t ${MULE_SERVER_PREFIX}-${MULE_SERVER}:${VERSION} -f devops/docker-mule-connector ."
+    }
+}
+stage("image: directus-connector app")
+{
+    steps {
+        sh "docker build -t ${DIRECTUS_SERVER_PREFIX}-${DIRECUTS_SERVER}:${VERSION} -f devops/docker-directus-connector ."
+    }
+}
+stage("image:tag")
+{
+steps {
+        script {
+                 if (env.BRANCH_NAME.startsWith('release') || env.BRANCH_NAME.startsWith('hotfix'))
+   {
+        sh "docker tag ${SERVER_PREFIX}-${SERVER}:${VERSION} ${ECR_PROD}/${SERVER_APP_REPO_PROD}:${SERVER_PREFIX}-${SERVER}-${VERSION}"
+        sh "docker tag ${MULE_SERVER_PREFIX}-${MULE_SERVER}:${VERSION} ${ECR_PROD}/${MULE_SERVER_REPO_PROD}:${MULE_SERVER_PREFIX}-${MULE_SERVER}-${VERSION}"
+        sh "docker tag ${DIRECTUS_SERVER_PREFIX}-${DIRECUTS_SERVER}:${VERSION} ${ECR_PROD}/${DIRECTUS_APP_REPO_PROD}:${DIRECTUS_SERVER_PREFIX}-${DIRECUTS_SERVER}-${VERSION}"
+        }
+   else
+    {
+        sh "docker tag ${SERVER_PREFIX}-${SERVER}:${VERSION} ${ECR}/${SERVER_APP_REPO_NAME}:${SERVER_PREFIX}-${SERVER}-${VERSION}"
+        sh "docker tag ${MULE_SERVER_PREFIX}-${MULE_SERVER}:${VERSION} ${ECR}/${MULE_SERVER_REPO_NAME}:${MULE_SERVER_PREFIX}-${MULE_SERVER}-${VERSION}"
+        sh "docker tag ${DIRECTUS_SERVER_PREFIX}-${DIRECUTS_SERVER}:${VERSION} ${ECR}/${DIRECTUS_APP_REPO_NAME}:${DIRECTUS_SERVER_PREFIX}-${DIRECUTS_SERVER}-${VERSION}"
+        }
+    }  
+}
+}
+
+stage("image:push")
+{
+    
+    steps {
+      
+        script {
+                 if (env.BRANCH_NAME.startsWith('release') || env.BRANCH_NAME.startsWith('hotfix'))
+                 {
+        sh "docker push ${ECR_PROD}/${SERVER_APP_REPO_PROD}:${SERVER_PREFIX}-${SERVER}-${VERSION}"
+        sh "docker push ${ECR_PROD}/${MULE_SERVER_REPO_PROD}:${MULE_SERVER_PREFIX}-${MULE_SERVER}-${VERSION}"
+        sh "docker push ${ECR_PROD}/${DIRECTUS_APP_REPO_PROD}:${DIRECTUS_SERVER_PREFIX}-${DIRECUTS_SERVER}-${VERSION}"
+    }
+  else {
+        sh "docker push ${ECR}/${SERVER_APP_REPO_NAME}:${SERVER_PREFIX}-${SERVER}-${VERSION}"
+        sh "docker push ${ECR}/${MULE_SERVER_REPO_NAME}:${MULE_SERVER_PREFIX}-${MULE_SERVER}-${VERSION}"
+        sh "docker push ${ECR}/${DIRECTUS_APP_REPO_NAME}:${DIRECTUS_SERVER_PREFIX}-${DIRECUTS_SERVER}-${VERSION}"
+    }  
+   }
+
+}
+}
+stage("clearing_docker_images")
+{
+    steps {
+        sh "docker rmi ${SERVER_PREFIX}-${SERVER}:${VERSION}"
+        sh "docker rmi ${MULE_SERVER_PREFIX}-${MULE_SERVER}:${VERSION}"
+        sh "docker rmi ${DIRECTUS_SERVER_PREFIX}-${DIRECUTS_SERVER}:${VERSION}"
+        sh "docker rmi yarn:latest || true"
+    }
+}        
+}
+post {
+     success {
+        script {
+             if (env.BRANCH_NAME == 'develop')
+             {
+            build job: 'VTR-Non-Prod-Release-BFF',
+                parameters: [
+                  [$class: 'StringParameterValue', name: 'BRANCH_NAME', value: "${BRANCH}"],
+                  [$class: 'StringParameterValue', name: 'VERSION', value: "${VERSION}"]
+                ]   
+        }
+     }
+ }
+        // Clean after build
+        always {
+            cleanWs()
+        }
+    }
+}

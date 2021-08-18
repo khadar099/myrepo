@@ -1,0 +1,18 @@
+FROM yarn:latest
+
+EXPOSE 5555
+
+# Running default command 
+CMD ["node", "main"]
+
+# Copy your code in the docker image
+COPY . /usr/src/app/
+
+RUN yarn nx run servers-directus-connector:build --prod
+
+# Remove devDependencies
+RUN npm prune --production
+
+RUN find . -maxdepth 1 ! -name '.' ! -name '..' ! -name 'dist' ! -name 'node_modules' -exec rm -r {} +
+RUN cp -r ./dist/apps/servers/directus-connector/* ./
+RUN rm -r dist
