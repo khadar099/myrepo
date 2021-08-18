@@ -1,0 +1,114 @@
+pipeline{
+    agent {label 'master'}
+    tools {nodejs "nodejs"}
+environment {
+        CHROME_BIN = "/bin/google-chrome"
+        BRANCH = "${env.BRANCH_NAME}"
+        NAME = BRANCH.replaceAll('/', '-').toLowerCase()
+        VERSION = "${env.VERSION == 'latest' ? "${BUILD_NUMBER}" : "${env.VERSION}"}"
+        YARN_REPO_NAME = "vtr-yarn-package"
+        CLIENT_APP_REPO_NAME = "b2b-client-app-non-prod"
+        ECR = "712965751785.dkr.ecr.us-east-1.amazonaws.com"
+        ECR_REGION = "us-east-1"
+	DIRECTUS_SERVER_PREFIX = "fl-directus-connector-app"
+    }
+options {
+      timeout(time: 20, unit: "MINUTES") 
+      buildDiscarder logRotator(artifactDaysToKeepStr: "", artifactNumToKeepStr: "", daysToKeepStr: "2", numToKeepStr: "2")
+  }    
+stages
+{
+stage("Stop Old Build") {
+            steps {
+                milestone label: "", ordinal:  Integer.parseInt(env.BUILD_ID) - 1
+                milestone label: "", ordinal:  Integer.parseInt(env.BUILD_ID)
+            }
+        }
+stage("Docker_login")
+{
+    steps {
+        sh "aws ecr get-login-password --region ${ECR_REGION} | docker login --username AWS --password-stdin ${ECR}"
+    }
+}
+stage("yarn:pull")
+{
+    steps {
+        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+            sh "docker pull ${ECR}/${YARN_REPO_NAME}:yarn-latest"
+        }
+    }
+} 
+stage("image: yarn install")
+{
+    steps {
+        sh "docker build -t yarn:latest -f devops/docker-yarn ."
+        sh "docker tag yarn:latest ${ECR}/${YARN_REPO_NAME}:yarn-latest"
+    }
+}
+stage("yarn package:push")
+{
+    steps {
+        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+            sh "docker push ${ECR}/${YARN_REPO_NAME}:yarn-latest"
+        }
+    }
+} 
+stage("image: B2B client app")
+{
+    steps {
+        sh "docker build -t ${NAME}:${VERSION} -f devops/docker-client-shell ."
+    }
+}
+stage("image: directus-connector app")
+{
+    steps {
+        sh "docker build -t ${DIRECTUS_SERVER_PREFIX}-${NAME}:${VERSION} -f devops/docker-directus-connector ."
+    }
+}
+stage("image:tag")
+{
+    steps {
+                         
+          sh "docker tag ${NAME}:${VERSION} ${ECR}/${CLIENT_APP_REPO_NAME}:${NAME}-${VERSION}"
+          sh "docker tag ${DIRECTUS_SERVER_PREFIX}-${NAME}:${VERSION} ${ECR}/${CLIENT_APP_REPO_NAME}:${DIRECTUS_SERVER_PREFIX}-${NAME}-${VERSION}"
+	}
+
+    }  
+
+stage("image:push")
+{
+    steps {
+        
+        sh "docker push ${ECR}/${CLIENT_APP_REPO_NAME}:${NAME}-${VERSION}"
+	sh "docker push ${ECR}/${CLIENT_APP_REPO_NAME}:${DIRECTUS_SERVER_PREFIX}-${NAME}-${VERSION}"
+    }  
+   }
+
+stage("clearing_docker_images")
+{
+    steps {
+        sh "docker rmi ${NAME}:${VERSION}"
+	sh "docker rmi ${DIRECTUS_SERVER_PREFIX}-${NAME}:${VERSION}"
+        sh "docker rmi yarn:latest || true"
+    }
+}      
+}
+post {
+     success {
+         script {
+             if (env.BRANCH_NAME == 'develop')
+             {
+            build job: 'VTR-Non-Prod-Release-B2B-FE',
+                parameters: [
+                  [$class: 'StringParameterValue', name: 'BRANCH_NAME', value: "${BRANCH}"],
+                    [$class: 'StringParameterValue', name: 'VERSION', value: "${VERSION}"]
+                ]                           
+            }
+        }
+     }
+        // Clean after build
+        always {
+            cleanWs()
+        }
+    }
+}

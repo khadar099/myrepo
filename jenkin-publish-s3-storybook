@@ -1,0 +1,47 @@
+pipeline {
+	agent {label 'docker-slave-agent1 || docker-slave-agent2 || docker-slave-agent3'}
+	tools {
+	nodejs "nodejs"
+	}
+environment {
+  CHROME_BIN = "/bin/google-chrome"
+}
+	options {
+        timeout(time: 20, unit: "MINUTES") 
+        buildDiscarder logRotator(artifactDaysToKeepStr: "", artifactNumToKeepStr: "", daysToKeepStr: "2", numToKeepStr: "2")
+  }
+	stages {
+		    stage("Stop Old Build") {
+            steps {
+                milestone label: "", ordinal:  Integer.parseInt(env.BUILD_ID) - 1
+                milestone label: "", ordinal:  Integer.parseInt(env.BUILD_ID)
+            }
+        }
+	
+		   stage("install node modules") {
+			     steps {
+				       sh "yarn install"
+			}
+		}
+
+stage("build")
+    {
+      steps{
+        sh "yarn nx run storybook-app:build-storybook"
+      }
+    }
+stage("Copying Build Artifacts to S3 Bucket") {
+                steps {	
+			withCredentials([aws(accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'ECR-credentials', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+               			sh "aws s3 cp */storybook/storybook-app/ s3://storybook.lla.digital/ --recursive"
+			}
+      }      
+}  
+  }
+ post {
+        always {
+            cleanWs()
+        }
+    } 
+  
+}
